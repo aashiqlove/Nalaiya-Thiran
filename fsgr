@@ -1,0 +1,49 @@
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+
+import com.opencsv.CSVWriter;
+
+public class cmd {
+    public static void main(String[] args) {
+    	String dist="சென்னை";
+    	String area="கோயம்பேடு ";
+    	Date Date = new Date();
+    	SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");  
+        String date = dateFormat.format(Date);
+        try {
+            Document doc = Jsoup.connect("https://www.cmdalayout.com/CommodityRate/CommodityRateToday.aspx").get();
+            Element table = doc.selectFirst("table.datatable tbody");
+            Elements rows = table.select("tr");
+
+            CSVWriter writer = new CSVWriter(new FileWriter("C:/Users/Aashik Ali/OneDrive/Desktop/New folder (3)/koyambedu_vegetable_rates.csv"));
+            String[] header = {"Date","District ","Area","Vegetable", "Min.Rate/kg.", "Max.Rate/kg."};
+            writer.writeNext(header);
+
+            // Iterate through each table row and extract data
+            for (Element row : rows) {
+                Elements columns = row.select("td");
+				String[] rowData = {
+                		date,dist,area,
+                        columns.get(0).text(),
+                        columns.get(1).text(),
+                        columns.get(2).text()
+                };
+                writer.writeNext(rowData);
+            }
+
+            writer.close();
+            System.out.println("CSV file created successfully.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
