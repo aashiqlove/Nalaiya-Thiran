@@ -1,202 +1,109 @@
-
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Scanner;
+package enam_data;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import com.opencsv.CSVWriter;
+import java.io.FileWriter;
+import java.io.OutputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 
-public class PPstate {
-	
 
+public class TRADE_DATA {
 	public static void main(String[] args) {
-		LocalDate DATE =LocalDate.now();
-        String date = DATE.format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-		Map<String,Integer> dist = new LinkedHashMap<>(); 
-		dist.put("\u0b95\u0bbe\u0b9e\u0bcd\u0b9a\u0bbf\u0baa\u0bc1\u0bb0\u0bae\u0bcd", 2);
-		dist.put("\u0ba4\u0bbf\u0bb0\u0bc1\u0bb5\u0bb3\u0bcd\u0bb3\u0bc2\u0bb0\u0bcd", 3);
-		dist.put("\u0b95\u0b9f\u0bb2\u0bc2\u0bb0\u0bcd", 4);
-		dist.put("\u0bb5\u0bbf\u0bb4\u0bc1\u0baa\u0bcd\u0baa\u0bc1\u0bb0\u0bae\u0bcd", 5);
-		dist.put("\u0bb5\u0bc7\u0bb2\u0bc2\u0bb0\u0bcd", 6);
-		dist.put("\u0ba4\u0bbf\u0bb0\u0bc1\u0bb5\u0ba3\u0bcd\u0ba3\u0bbe\u0bae\u0bb2\u0bc8", 7);
-		dist.put("\u0ba8\u0bbe\u0bae\u0b95\u0bcd\u0b95\u0bb2\u0bcd", 8);
-		dist.put("\u0b9a\u0bc7\u0bb2\u0bae\u0bcd", 9);
-		dist.put("\u0b88\u0bb0\u0bcb\u0b9f\u0bc1", 10);
-		dist.put("\u0b95\u0bcb\u0baf\u0bae\u0bcd\u0baa\u0bc1\u0ba4\u0bcd\u0ba4\u0bc2\u0bb0\u0bcd", 11);
-		dist.put("\u0ba4\u0bb0\u0bcd\u0bae\u0baa\u0bc1\u0bb0\u0bbf", 12);
-		dist.put("\u0b95\u0bbf\u0bb0\u0bc1\u0bb7\u0bcd\u0ba3\u0b95\u0bbf\u0bb0\u0bbf", 13);
-		dist.put("\u0ba4\u0bbf\u0bb0\u0bc1\u0b9a\u0bcd\u0b9a\u0bbf", 14);
-		dist.put("\u0b95\u0bb0\u0bc2\u0bb0\u0bcd", 15);
-		dist.put("\u0baa\u0bc6\u0bb0\u0bae\u0bcd\u0baa\u0bb2\u0bc2\u0bb0\u0bcd", 16);
-		dist.put("\u0ba4\u0b9e\u0bcd\u0b9a\u0bbe\u0bb5\u0bc2\u0bb0\u0bcd", 17);
-		dist.put("\u0ba4\u0bbf\u0bb0\u0bc1\u0bb5\u0bbe\u0bb0\u0bc2\u0bb0\u0bcd", 18);
-		dist.put("\u0ba8\u0bbe\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f\u0bbf\u0ba9\u0bae\u0bcd", 19);
-		dist.put("\u0baa\u0bc1\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bcb\u0b9f\u0bcd\u0b9f\u0bc8", 20);
-		dist.put("\u0bae\u0ba4\u0bc1\u0bb0\u0bc8", 21);
-		dist.put("\u0ba4\u0bbf\u0ba3\u0bcd\u0b9f\u0bc1\u0b95\u0bcd\u0b95\u0bb2\u0bcd", 22);
-		dist.put("\u0ba4\u0bc7\u0ba9\u0bbf", 23);
-		dist.put("\u0b9a\u0bbf\u0bb5\u0b95\u0b99\u0bcd\u0b95\u0bc8", 24);
-		dist.put("\u0bb0\u0bbe\u0bae\u0ba8\u0bbe\u0ba4\u0baa\u0bc1\u0bb0\u0bae\u0bcd", 25);
-		dist.put("\u0bb5\u0bbf\u0bb0\u0bc1\u0ba4\u0bc1\u0ba8\u0b95\u0bb0\u0bcd", 26);
-		dist.put("\u0ba4\u0bbf\u0bb0\u0bc1\u0ba8\u0bc6\u0bb2\u0bcd\u0bb5\u0bc7\u0bb2\u0bbf", 27);
-		dist.put("\u0ba4\u0bc2\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bc1\u0b9f\u0bbf", 28);
-		dist.put("\u0b95\u0ba9\u0bcd\u0ba9\u0bbf\u0baf\u0bbe\u0b95\u0bc1\u0bae\u0bb0\u0bbf", 29);
-		dist.put("\u0b85\u0bb0\u0bbf\u0baf\u0bb2\u0bc2\u0bb0\u0bcd", 30);
-		dist.put("\u0ba8\u0bc0\u0bb2\u0b95\u0bbf\u0bb0\u0bbf", 31);
-		dist.put("\u0b9a\u0bc6\u0ba9\u0bcd\u0ba9\u0bc8", 32);
-		dist.put("\u0ba4\u0bbf\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bc2\u0bb0\u0bcd", 33);
-		
-		
-		 List<String[]> allData = new ArrayList<>();
-		for (Map.Entry<String, Integer> entry : dist.entrySet()) {
-	    Integer val = entry.getValue();
-		String key=entry.getKey();
-		
-        String url = "http://122.15.179.102/people_app/Veg_price/us_list/"+val;
-        String cookie = "ci_session=e982683b97cc77dc39ef458703122fd091563c7d";
-
         try {
-            URL endpoint = new URL(url);
-            HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();
+        	Date currentDate = new Date();  
+            currentDate.setTime(System.currentTimeMillis());  
+            Date yesterdayDate = new Date(currentDate.getTime() - (1000 * 60 * 60 * 24));  
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");  
+            String yesterdayDateString = dateFormat.format(yesterdayDate);
+            URL url = new URL("https://enam.gov.in/web/Ajax_ctrl/trade_data_list");
+
+            Map<String, String> parameters = new HashMap<>();
+            parameters.put("language", "en");
+            parameters.put("stateName", "-- All --");
+            parameters.put("apmcName", "-- Select APMCs --");
+            parameters.put("commodityName", "-- Select Commodity --");
+            parameters.put("fromDate", yesterdayDateString);
+            parameters.put("toDate", yesterdayDateString);
+
+            StringBuilder postData = new StringBuilder();
+            for (Map.Entry<String, String> param : parameters.entrySet()) {
+                if (postData.length() != 0) {
+                    postData.append('&');
+                }
+                postData.append(URLEncoder.encode(param.getKey(), "UTF-8"));
+                postData.append('=');
+                postData.append(URLEncoder.encode(param.getValue(), "UTF-8"));
+            }
+
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
-            connection.setRequestProperty("Accept", "application/json, text/plain, */*");
-            connection.setRequestProperty("Accept-Encoding", "gzip, deflate");
-            connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
-            connection.setRequestProperty("Connection", "keep-alive");
-            connection.setRequestProperty("Content-Length", "0");
-            connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-            connection.setRequestProperty("Cookie", cookie);
-            connection.setRequestProperty("Host", "122.15.179.102");
-            connection.setRequestProperty("Origin", "http://122.15.179.102");
-            connection.setRequestProperty("Referer", "http://122.15.179.102/people_app/veg_price/index/tm");
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36");
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.setDoOutput(true);
+
+            OutputStream outputStream = connection.getOutputStream();
+            outputStream.write(postData.toString().getBytes("UTF-8"));
+            outputStream.flush();
 
             int responseCode = connection.getResponseCode();
+            StringBuilder response = new StringBuilder();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                // If the response is OK, read the content
-                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
+                Scanner scanner = new Scanner(connection.getInputStream());
+                while (scanner.hasNextLine()) {
+                    response.append(scanner.nextLine());
                 }
-                reader.close();
+                scanner.close();
+                System.out.println(response);
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                JSONArray dataArray = jsonResponse.getJSONArray("data");
+            
+            
+                String csvFilePath = "C:/Users/Aashik Ali/OneDrive/Desktop/New folder (3)/enam_trade/"+yesterdayDateString+"_data.csv";// Change this to your desired file path
+                FileWriter writer = new FileWriter(csvFilePath);
 
-                String jsonResponse = response.toString();
-                JSONArray jsonArray = new JSONArray(jsonResponse);
+                writer.write("id,state,apmc,commodity,min_price,modal_price,max_price,commodity_arrivals,commodity_traded,created_at,status,Units\n");
 
-              
-                LinkedHashMap<String, String> result = new LinkedHashMap<>();
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    JSONObject entry1 = jsonArray.getJSONObject(i);
-                    String masterUsId = entry1.getString("master_us_id");
-                    String usName = entry1.getString("tamil_us_name");
-                    result.put(masterUsId, usName);
+                for (int i = 0; i < dataArray.length(); i++) {
+                    JSONObject data = dataArray.getJSONObject(i);
+                    
+                    if ( data.has("id") && data.has("state") && data.has("apmc") && data.has("commodity") && data.has("min_price") && data.has("modal_price") && data.has("max_price") && data.has("commodity_arrivals") && data.has("commodity_traded") && data.has("created_at") && data.has("status") && data.has("Commodity_Uom")) {
+                   
+                        String id = data.getString("id");
+                        String state = data.getString("state");
+                        String apmc = data.getString("apmc");
+                        String commodity = data.getString("commodity");
+                        String minPrice = data.getString("min_price");
+                        String modalPrice = data.getString("modal_price");
+                        String maxPrice = data.getString("max_price");
+                        String commodityArrivals = data.getString("commodity_arrivals");
+                        String commodityTraded = data.getString("commodity_traded");
+                        String createdAt = data.getString("created_at");
+                        String status = data.getString("status");
+                        String commodityUom = data.getString("Commodity_Uom");
+
+
+                        writer.write(id + "," + state + "," + apmc + "," + commodity + "," + minPrice + "," + modalPrice + "," + maxPrice + "," + commodityArrivals + "," + commodityTraded + "," + createdAt + "," + status + "," + commodityUom + "\n");
+                    }
                 }
-                System.out.println(result);
-                for (Map.Entry<String, String> entry2 : result.entrySet()) {
-            		String key1 = entry2.getKey();
-            		String val1=entry2.getValue();
-            		String url1 = "http://122.15.179.102/people_app/Veg_price/get_price/"+date+"/"+key1;
-                    String cookie1 = "ci_session=e982683b97cc77dc39ef458703122fd091563c7d";
 
-                    try {
-                        URL endpoint1 = new URL(url1);
-                        HttpURLConnection connection1 = (HttpURLConnection) endpoint1.openConnection();
-                        connection1.setRequestMethod("POST");
-                        connection1.setRequestProperty("Accept", "application/json, text/plain, */*");
-                        connection1.setRequestProperty("Accept-Encoding", "gzip, deflate");
-                        connection1.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
-                        connection1.setRequestProperty("Connection", "keep-alive");
-                        connection1.setRequestProperty("Content-Length", "0");
-                        connection1.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-                        connection1.setRequestProperty("Cookie", cookie1);
-                        connection1.setRequestProperty("Host", "122.15.179.102");
-                        connection1.setRequestProperty("Origin", "http://122.15.179.102");
-                        connection1.setRequestProperty("Referer", "http://122.15.179.102/people_app/veg_price/index/tm");
-                        connection1.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36");
+                writer.close();
+                System.out.println("Data saved to CSV file: " + csvFilePath);
+            } else {
+                System.out.println("Error: Received response code " + responseCode);
+            }
 
-                        int responseCode1 = connection1.getResponseCode();
-                        if (responseCode1 == HttpURLConnection.HTTP_OK) {
-                            // If the response is OK, read the content
-                            BufferedReader reader1 = new BufferedReader(new InputStreamReader(connection1.getInputStream()));
-                            StringBuilder response1 = new StringBuilder();
-                            String line1;
-                            while ((line1 = reader1.readLine()) != null) {
-                                response1.append(line1);
-                            }
-                            reader.close();
-                            System.out.println(response1);
-                            String jsonResponse1 = response1.toString();
-                            JSONArray jsonArray1 = new JSONArray(jsonResponse1);
-
-                            // Process each entry and add to allData
-                            for (int j = 0; j < jsonArray1.length(); j++) {
-                                JSONObject entry3 = jsonArray1.getJSONObject(j);
-                                String cropName = entry3.getString("crop_name_tamil");
-                                String minPrice = entry3.getString("min_price");
-                                String maxPrice = entry3.getString("max_price");
-                                
-                                String[] row = {date,key,val1,cropName, minPrice, maxPrice};
-                                allData.add(row);  
-                              
-                            }
-            		
-            		
-            	}
-            else {
-                System.out.println("Request failed with error code: " + responseCode1);
-            }
-            } catch (IOException e) {
-            e.printStackTrace();
-            }}
-                
-               
-                           
-               
-            }
-			     else {
-                System.out.println("Request failed with error code: " + responseCode);
-            }
-            
-        } catch (IOException e) {
-            e.printStackTrace();
-            
-        }}
-		
-		String csvFilePath = "C:/Users/Aashik Ali/OneDrive/Desktop/New folder (3)/people_app/"+date+"_date(people_app).csv"; // Change this to your desired file path
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(csvFilePath), StandardCharsets.UTF_8));
-        	     CSVWriter csvWriter = new CSVWriter(writer)) {
-            String[] header = {"Date","District","Market","Crop Name", "Min Price", "Max Price"};
-            csvWriter.writeNext(header);
-
-            for (String[] row : allData) {
-            	 csvWriter.writeNext(row);
-            }
-        } catch (IOException e) {
+            connection.disconnect();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-		
-		System.out.println("finish");
     }
 }
