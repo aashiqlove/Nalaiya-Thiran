@@ -1,15 +1,8 @@
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
-import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -17,16 +10,16 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * Servlet implementation class myservlet
+ * Servlet implementation class Servlet1
  */
-@WebServlet("/myservlet")
-public class myservlet extends HttpServlet {
+@WebServlet("/Servlet1")
+public class Servlet1 extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public myservlet() {
+    public Servlet1() {
         super();
         // TODO Auto-generated constructor stub
     }
@@ -35,17 +28,49 @@ public class myservlet extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
     public static Map<Integer, String[]> news= box.news;
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    	box obj = new box();
-    	 obj.dd();
-      	 obj.samayam();
-   	     obj.dinamalar();
-   	     obj.the_hindu();
-   	     obj.dinakaran();
-   	     obj.excute();
-   	     System.out.println("finish");
-    	
-    }
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		// TODO Auto-generated method stub
+
+		 String clickedValue = request.getParameter("clickedValue");
+		 Integer b=Integer.parseInt(clickedValue);
+		 String[] a=news.get(b);
+		 String articleUrl = a[0];
+	        String subimg = a[1].substring(0,6);
+	        String img ="";
+	        if (subimg.contains("https:")) {
+				img=a[1];
+			} else {
+				img="https://akm-img-a-in.tosshub.com/indiatoday/images/story/202210/breaking_latest_news_1200x675_1-sixteen_nine_555.jpg?VersionId=bLdr13QKJ5KRZO3IAQuURXh0gZUgtbou";
+			}
+	        String date = a[2];
+	        String heading = a[3];
+	        String content = a[4];
+	        StringBuilder htmlContent = new StringBuilder();
+	        htmlContent.append("<!DOCTYPE html>\r\n"
+	        		+ "<html>\r\n"
+	        		+ "<head>\r\n"
+	        		+ "	<title>news</title>\r\n"
+	        		+ "	<link rel=\"stylesheet\" type=\"text/css\" href=\"style1.css\">\r\n"
+	        		+ "</head>\r\n"
+	        		+ "<body class=\"body\">");
+	        htmlContent.append("<div class='news_div'>\r\n"
+	        		+ "		<img src="+img+" class='img' style='width:40em;height:30em '>\r\n"
+	        		+ "		<h1 class='heading'>"+heading+"</h1>\r\n"
+	        		+ "		<P class='date'>"+date+"</P>\r\n"
+	        		+"		<p class='content'>"+content+"</p>"
+	        		+ "	</div>");
+	       htmlContent.append("\r\n"
+	       		+ "</body>\r\n"
+	       		+ "</html>");
+	    // Write HTML content to a file
+	       try (BufferedWriter writer = new BufferedWriter(new FileWriter("C:/Users/Aashik Ali/eclipse-workspace1/news page/src/main/webapp/news.html"))) {
+	           writer.write(htmlContent.toString());
+	           System.out.println("HTML file generated successfully!");
+	       } catch (IOException e) {
+	           e.printStackTrace();
+	       }
+	        
+	}
 
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
