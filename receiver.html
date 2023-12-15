@@ -1,2 +1,178 @@
-Invalid or undefined buffer received: ArrayBuffer(564122)byteLength: 564122detached: falsemaxByteLength: 564122resizable: false[[Prototype]]: ArrayBufferbyteLength: (...)constructor: ƒ ArrayBuffer()detached: (...)maxByteLength: (...)resizable: (...)resize: ƒ resize()slice: ƒ slice()transfer: ƒ transfer()transferToFixedLength: ƒ transferToFixedLength()Symbol(Symbol.toStringTag): "ArrayBuffer"get byteLength: ƒ byteLength()get detached: ƒ detached()get maxByteLength: ƒ maxByteLength()get resizable: ƒ resizable()[[Prototype]]: Object[[Int8Array]]: Int8Array(564122)[[Uint8Array]]: Uint8Array(564122)[[Int16Array]]: Int16Array(282061)[[ArrayBufferByteLength]]: 564122[[ArrayBufferData]]: 16
-(anonymous) @ receiver.js:46
+const express = require("express");
+const path = require("path");
+const app = express();
+const server = require("http").createServer(app);
+const io = require("socket.io")(server);
+
+app.use(express.static(path.join(__dirname + "/public")));
+
+const rooms = {}; // To store room information
+
+io.on("connection", function (socket) {
+  socket.on("sender-join", function (data) {
+    const roomID = data.uid;
+    socket.join(roomID);
+    rooms[roomID] = { sender: socket.id, receivers: [] };
+  });
+
+  socket.on("receiver-join", function (data) {
+    const roomID = data.uid;
+    const senderID = data.sender_uid;
+    socket.join(roomID);
+    if (rooms[roomID]) {
+      rooms[roomID].receivers.push(socket.id);
+      io.to(rooms[roomID].sender).emit("receiver-connected", { receiverID: socket.id });
+    }
+  });
+
+  socket.on("file-meta", function (data) {
+    const roomID = data.uid;
+    socket.to(roomID).emit("fs-meta", data.metadata);
+  });
+
+  socket.on("fs-start", function (data) {
+    const roomID = data.uid;
+    socket.to(roomID).emit("fs-share", {});
+  });
+
+  socket.on("file-raw", function (data) {
+    const roomID = data.uid;
+    socket.to(roomID).emit("fs-share", data.buffer);
+  });
+});
+
+server.listen(5000);
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////
+(function () {
+  let senderID;
+  const socket = io();
+
+  function generateID() {
+    return `${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}`;
+  }
+
+  document.getElementById("receiver-start-con-btn").addEventListener("click", function () {
+    senderID = document.querySelector("#join-id").value;
+    if (senderID.length == 0) {
+      return;
+    }
+    const roomID = generateID(); // Generate receiver's own room ID
+    socket.emit("receiver-join", { uid: roomID, sender_uid: senderID });
+
+    document.querySelector(".join-screen").classList.remove("active");
+    document.querySelector(".fs-screen").classList.add("active");
+  });
+
+  let fileShare = {};
+  socket.on("fs-meta", function (metadata) {
+    fileShare.metadata = metadata;
+    fileShare.transmitted = 0;
+    fileShare.buffer = [];
+    let el = document.createElement("div");
+    el.classList.add("item");
+    el.innerHTML = `
+      <div class="progress">0%</div>
+      <div class="filename">${metadata.filename}</div>
+    `;
+    document.querySelector(".files-list").appendChild(el);
+    fileShare.progress_node = el.querySelector(".progress");
+    socket.emit("fs-start", { uid: senderID });
+  });
+
+  socket.on("fs-share", function (buffer) {
+    fileShare.buffer.push(buffer);
+    fileShare.transmitted += buffer.byteLength;
+    fileShare.progress_node.innerHTML = Math.trunc((fileShare.transmitted / fileShare.metadata.total_buffer_size) * 100) + "%";
+    if (fileShare.transmitted == fileShare.metadata.total_buffer_size) {
+      download(new Blob(fileShare.buffer), fileShare.metadata.filename);
+      fileShare = {};
+    } else {
+      socket.emit("fs-start", { uid: senderID });
+    }
+  });
+
+  // Rest of your receiver logic remains unchanged...
+})();
+
+
+
+
+
+
+
+////////////////////////////////////////////
+(function () {
+  let roomID;
+  const socket = io();
+
+  function generateID() {
+    return `${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}`;
+  }
+
+  document.getElementById("sender-start-con-btn").addEventListener("click", function () {
+    roomID = generateID();
+
+    document.getElementById("join-id").innerHTML = `<b> Room Id </b><span>${roomID}</span>`;
+    socket.emit("sender-join", { uid: roomID });
+  });
+
+  document.getElementById("file-input").addEventListener("change", function (e) {
+    let file = e.target.files[0];
+    if (!file) {
+      return;
+    }
+    let reader = new FileReader();
+    reader.onload = function (e) {
+      let buffer = new Uint8Array(reader.result);
+      let el = document.createElement("div");
+      el.classList.add("item");
+      el.innerHTML = `
+        <div class="progress">0%</div>
+        <div class="filename">${file.name}</div>
+      `;
+      document.querySelector(".files-list").appendChild(el);
+      shareFile(
+        {
+          filename: file.name,
+          total_buffer_size: buffer.length,
+          buffer_size: 1024,
+        },
+        buffer,
+        el.querySelector(".progress")
+      );
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  function shareFile(metadata, buffer, progress_node) {
+    socket.emit("file-meta", {
+      uid: roomID,
+      metadata: metadata,
+    });
+    socket.on("fs-share", function () {
+      let chunk = buffer.slice(0, metadata.buffer_size);
+      buffer = buffer.slice(metadata.buffer_size, buffer.length);
+      progress_node.innerHTML = Math.trunc(((metadata.total_buffer_size - buffer.length) / metadata.total_buffer_size) * 100) + "%";
+      if (chunk.length != 0) {
+        socket.emit("file-raw", {
+          uid: roomID,
+          buffer: chunk,
+        });
+      }
+    });
+  }
+
+  // Rest of your sender logic remains unchanged...
+})();
+
+
+
+
+
+
