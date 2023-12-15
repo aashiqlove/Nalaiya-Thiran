@@ -1,4 +1,34 @@
-document.addEventListener("DOMContentLoaded", function() {
-  // Your JavaScript code here
-  // This ensures the code runs after the DOM is fully loaded
+document.getElementById("file-input").addEventListener("change", function(e) {
+  const files = e.target.files;
+  if (files.length === 0) return;
+
+  const fileListDiv = document.getElementById("file-list");
+  fileListDiv.innerHTML = ""; // Clear existing file list
+
+  // Iterate through each file and share it
+  for (let i = 0; i < files.length; i++) {
+    shareFile(files[i], fileListDiv); // Pass fileListDiv to append generated elements
+  }
 });
+
+function shareFile(file, fileListDiv) {
+  let reader = new FileReader();
+  reader.onload = function(e) {
+    let buffer = new Uint8Array(reader.result);
+    let el = document.createElement("div");
+    el.classList.add("item");
+    el.innerHTML = `
+      <div class="progress">0%</div>
+      <div class="filename">${file.name}</div>
+    `;
+    fileListDiv.appendChild(el); // Append the generated element to the fileListDiv
+
+    // Share the file
+    shareFileChunked({
+      filename: file.name,
+      total_buffer_size: buffer.length,
+      buffer_size: 1024
+    }, buffer, el.querySelector(".progress"));
+  }
+  reader.readAsArrayBuffer(file);
+}
