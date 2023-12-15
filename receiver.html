@@ -1,71 +1,19 @@
-(function () {
-  let senderID;
-  const socket = io();
-  const fileShares = {}; // Store file shares for multiple senders
-
-  function generateID() {
-    return `${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}`;
-  }
-
-  document.getElementById("receiver-start-con-btn").addEventListener("click", function () {
-    senderID = document.querySelector("#join-id").value;
-    if (senderID.length == 0) {
-      return;
-    }
-    let joinID = generateID();
-    socket.emit("receiver-join", {
-      uid: joinID,
-      sender_uid: senderID
-    });
-    document.querySelector(".join-screen").classList.remove("active");
-    document.querySelector(".fs-screen").classList.add("active");
-  });
-
-  socket.on("fs-meta", function (metadata) {
-    if (!fileShares[metadata.senderID]) {
-      fileShares[metadata.senderID] = {};
-    }
-    fileShares[metadata.senderID].metadata = metadata;
-    fileShares[metadata.senderID].transmitted = 0;
-    fileShares[metadata.senderID].buffer = [];
-    let el = document.createElement("div");
-    el.classList.add("item");
-    el.innerHTML = `
-        <div class="progress">0%</div>
-        <div class="filename">${metadata.filename}</div>
-      `;
-    document.querySelector(".files-list").appendChild(el);
-    fileShares[metadata.senderID].progress_node = el.querySelector(".progress");
-    socket.emit("fs-start", {
-      uid: senderID
-    });
-  });
-
-  socket.on("fs-share", function (data) {
-    if (!data || !data.buffer) {
-      console.error('Invalid or undefined buffer received:', data);
-      return;
-    }
-
-    let buffer = data.buffer;
-
-    // Check if the buffer has a byteLength property before accessing it
-    if (buffer && buffer.byteLength) {
-      let senderID = data.senderID;
-      let fileShare = fileShares[senderID];
-      fileShare.buffer.push(buffer);
-      fileShare.transmitted += buffer.byteLength;
-      fileShare.progress_node.innerHTML = Math.trunc(fileShare.transmitted / fileShare.metadata.total_buffer_size * 100) + "%";
-      if (fileShare.transmitted == fileShare.metadata.total_buffer_size) {
-        download(new Blob(fileShare.buffer), fileShare.metadata.filename);
-        delete fileShares[senderID];
-      } else {
-        socket.emit("fs-start", {
-          uid: senderID
-        });
-      }
-    } else {
-      console.error('Invalid buffer format:', buffer);
-    }
-  });
-})();
+nvalid or undefined buffer received: ArrayBuffer(1024)byteLength: 1024detached: falsemaxByteLength: 1024resizable: false[[Prototype]]: ArrayBuffer[[Int8Array]]: Int8Array(1024)[[Uint8Array]]: Uint8Array(1024)[[Int16Array]]: Int16Array(512)[[Int32Array]]: Int32Array(256)[[ArrayBufferByteLength]]: 1024[[ArrayBufferData]]: 14
+(anonymous) @ receiver.js:46
+T.emit @ index.js:143
+value @ socket.js:248
+value @ socket.js:235
+value @ socket.js:204
+T.emit @ index.js:143
+value @ manager.js:200
+T.emit @ index.js:143
+value @ index.js:122
+value @ manager.js:192
+T.emit @ index.js:143
+value @ socket.js:323
+T.emit @ index.js:143
+value @ transport.js:99
+value @ transport.js:92
+ws.onmessage @ websocket.js:76
+Show 10 more frames
+Show less
