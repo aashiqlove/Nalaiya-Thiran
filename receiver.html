@@ -1,7 +1,7 @@
 (function(){
   let senderID;
   const socket = io();
-  let fileShares = [];
+  let filesToDownload = [];
 
   function generateID() {
     return `${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}`;
@@ -22,13 +22,8 @@
   });
 
   socket.on("fs-meta", function(metadata){
-    const fileShare = {
-      metadata: metadata,
-      transmitted: 0,
-      buffer: [],
-      received: false
-    };
-    fileShares.push(fileShare);
+    filesToDownload.push({ metadata: metadata, buffer: [] });
+
     let el = document.createElement("div");
     el.classList.add("item");
     el.innerHTML = `
@@ -36,23 +31,21 @@
       <div class="filename">${metadata.filename}</div>
     `;
     document.querySelector(".files-list").appendChild(el);
-    fileShare.progress_node = el.querySelector(".progress");
-    socket.emit("fs-start", { uid: senderID });
+
+    downloadNextFile();
   });
 
   socket.on("fs-share", function(buffer){
-    const fileShare = fileShares[fileShares.length - 1];
-    fileShare.buffer.push(buffer);
-    fileShare.transmitted += buffer.byteLength;
-    const progress = Math.min(Math.trunc(fileShare.transmitted / fileShare.metadata.total_buffer_size * 100), 100);
-    fileShare.progress_node.innerHTML = progress + "%";
-    if (fileShare.transmitted === fileShare.metadata.total_buffer_size && !fileShare.received) {
-      fileShare.received = true;
-      downloadFile(fileShare.buffer, fileShare.metadata.filename);
-      fileShares.pop();
-      if (fileShares.length > 0) {
-        socket.emit("fs-start", { uid: senderID });
-      }
+    const currentFile = filesToDownload[filesToDownload.length - 1];
+    currentFile.buffer.push(buffer);
+    const progress = Math.min(Math.trunc(currentFile.buffer.reduce((acc, curr) => acc + curr.byteLength, 0) / currentFile.metadata.total_buffer_size * 100), 100);
+    const progressNodes = document.querySelectorAll(".progress");
+    progressNodes[progressNodes.length - 1].innerHTML = progress + "%";
+
+    if (currentFile.buffer.reduce((acc, curr) => acc + curr.byteLength, 0) === currentFile.metadata.total_buffer_size) {
+      downloadFile(currentFile.buffer, currentFile.metadata.filename);
+      filesToDownload.shift();
+      downloadNextFile();
     }
   });
 
@@ -64,5 +57,11 @@
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  function downloadNextFile() {
+    if (filesToDownload.length > 0) {
+      socket.emit("fs-start", { uid: senderID });
+    }
   }
 })();
