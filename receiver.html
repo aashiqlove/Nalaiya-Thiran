@@ -1,1 +1,23 @@
+(function () {
+  let receiverIDs = []; // Store multiple receiver IDs
+  const socket = io();
 
+  function generateID() {
+    return `${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}`;
+  }
+
+  document.getElementById("sender-start-con-btn").addEventListener("click", function () {
+    let joinID = generateID();
+
+    document.getElementById("join-id").innerHTML = `<b> Room Id </b><span>${joinID}</span>`;
+    socket.emit("sender-join", {
+      uid: joinID
+    });
+  });
+
+  socket.on("init", function (uid) {
+    receiverIDs.push(uid); // Store newly joined receiver ID
+    receiverIDs = receiverIDs.slice(-10); // Limit to 10 recent receiver IDs
+    document.querySelector(".join-screen").classList.remove("active");
+    document.querySelector(".fs-screen").classList.add("active");
+  });
