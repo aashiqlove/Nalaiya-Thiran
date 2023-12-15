@@ -1,23 +1,60 @@
 (function () {
-  let receiverIDs = []; // Store multiple receiver IDs
+  let senderID;
   const socket = io();
+  const fileShares = {}; // Store file shares for multiple senders
 
   function generateID() {
     return `${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}`;
   }
 
-  document.getElementById("sender-start-con-btn").addEventListener("click", function () {
+  document.getElementById("receiver-start-con-btn").addEventListener("click", function () {
+    senderID = document.querySelector("#join-id").value;
+    if (senderID.length == 0) {
+      return;
+    }
     let joinID = generateID();
-
-    document.getElementById("join-id").innerHTML = `<b> Room Id </b><span>${joinID}</span>`;
-    socket.emit("sender-join", {
-      uid: joinID
+    socket.emit("receiver-join", {
+      uid: joinID,
+      sender_uid: senderID
     });
-  });
-
-  socket.on("init", function (uid) {
-    receiverIDs.push(uid); // Store newly joined receiver ID
-    receiverIDs = receiverIDs.slice(-10); // Limit to 10 recent receiver IDs
     document.querySelector(".join-screen").classList.remove("active");
     document.querySelector(".fs-screen").classList.add("active");
   });
+
+  socket.on("fs-meta", function (metadata) {
+    if (!fileShares[metadata.senderID]) {
+      fileShares[metadata.senderID] = {};
+    }
+    fileShares[metadata.senderID].metadata = metadata;
+    fileShares[metadata.senderID].transmitted = 0;
+    fileShares[metadata.senderID].buffer = [];
+    let el = document.createElement("div");
+    el.classList.add("item");
+    el.innerHTML = `
+          <div class="progress">0%</div>
+          <div class="filename">${metadata.filename}</div>
+        `;
+    document.querySelector(".files-list").appendChild(el);
+    fileShares[metadata.senderID].progress_node = el.querySelector(".progress");
+    socket.emit("fs-start", {
+      uid: senderID
+    });
+  });
+
+  socket.on("fs-share", function (data) {
+    let senderID = data.senderID;
+    let fileShare = fileShares[senderID];
+    fileShare.buffer.push(data.buffer);
+    fileShare.transmitted += data.buffer.byteLength;
+    fileShare.progress_node.innerHTML = Math.trunc(fileShare.transmitted / fileShare.metadata.total_buffer_size * 100) + "%";
+    if (fileShare.transmitted == fileShare.metadata.total_buffer_size) {
+      download(new Blob(fileShare.buffer), fileShare.metadata.filename);
+      delete fileShares[senderID];
+    } else {
+      socket.emit("fs-start", {
+        uid: senderID
+      });
+    }
+  });
+
+})();
