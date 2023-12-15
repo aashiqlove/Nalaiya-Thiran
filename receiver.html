@@ -1,60 +1,38 @@
-(function () {
-  let senderID;
-  const socket = io();
-  const fileShares = {}; // Store file shares for multiple senders
+const express = require("express");
+const path = require("path");
+const app = express();
+const server = require("http").createServer(app);
+const io = require("socket.io")(server);
 
-  function generateID() {
-    return `${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}-${Math.trunc(Math.random() * 999)}`;
-  }
+app.use(express.static(path.join(__dirname + "/public")));
 
-  document.getElementById("receiver-start-con-btn").addEventListener("click", function () {
-    senderID = document.querySelector("#join-id").value;
-    if (senderID.length == 0) {
-      return;
-    }
-    let joinID = generateID();
-    socket.emit("receiver-join", {
-      uid: joinID,
-      sender_uid: senderID
-    });
-    document.querySelector(".join-screen").classList.remove("active");
-    document.querySelector(".fs-screen").classList.add("active");
+const senderToReceiversMap = {}; // Store sender to receivers mapping
+
+io.on("connection", function (socket) {
+  socket.on("sender-join", function (data) {
+    socket.join(data.uid);
+    senderToReceiversMap[data.uid] = []; // Initialize receivers array for sender
   });
 
-  socket.on("fs-meta", function (metadata) {
-    if (!fileShares[metadata.senderID]) {
-      fileShares[metadata.senderID] = {};
-    }
-    fileShares[metadata.senderID].metadata = metadata;
-    fileShares[metadata.senderID].transmitted = 0;
-    fileShares[metadata.senderID].buffer = [];
-    let el = document.createElement("div");
-    el.classList.add("item");
-    el.innerHTML = `
-          <div class="progress">0%</div>
-          <div class="filename">${metadata.filename}</div>
-        `;
-    document.querySelector(".files-list").appendChild(el);
-    fileShares[metadata.senderID].progress_node = el.querySelector(".progress");
-    socket.emit("fs-start", {
-      uid: senderID
-    });
+  socket.on("receiver-join", function (data) {
+    socket.join(data.uid);
+    socket.join(data.sender_uid);
+    senderToReceiversMap[data.sender_uid].push(data.uid); // Add receiver to sender's array
+    socket.in(data.sender_uid).emit("init", data.uid);
   });
 
-  socket.on("fs-share", function (data) {
-    let senderID = data.senderID;
-    let fileShare = fileShares[senderID];
-    fileShare.buffer.push(data.buffer);
-    fileShare.transmitted += data.buffer.byteLength;
-    fileShare.progress_node.innerHTML = Math.trunc(fileShare.transmitted / fileShare.metadata.total_buffer_size * 100) + "%";
-    if (fileShare.transmitted == fileShare.metadata.total_buffer_size) {
-      download(new Blob(fileShare.buffer), fileShare.metadata.filename);
-      delete fileShares[senderID];
-    } else {
-      socket.emit("fs-start", {
-        uid: senderID
-      });
-    }
+  socket.on("file-meta", function (data) {
+    const senderID = Object.keys(socket.rooms).find(roomID => roomID !== socket.id);
+    socket.in(data.uid).emit("fs-meta", { ...data, senderID }); // Send sender ID with metadata
   });
 
-})();
+  socket.on("fs-start", function (data) {
+    socket.in(data.uid).emit("fs-share", { senderID: data.uid }); // Send sender ID for file sharing
+  });
+
+  socket.on("file-raw", function (data) {
+    socket.in(data.uid).emit("fs-share", data);
+  });
+});
+
+server.listen(5000);
