@@ -25,7 +25,8 @@
     const fileShare = {
       metadata: metadata,
       transmitted: 0,
-      buffer: []
+      buffer: [],
+      received: false
     };
     fileShares.push(fileShare);
     let el = document.createElement("div");
@@ -43,9 +44,12 @@
     const fileShare = fileShares[fileShares.length - 1];
     fileShare.buffer.push(buffer);
     fileShare.transmitted += buffer.byteLength;
-    fileShare.progress_node.innerHTML = Math.trunc(fileShare.transmitted / fileShare.metadata.total_buffer_size * 100) + "%";
+    fileShare.progress_node.innerHTML = Math.min(Math.trunc(fileShare.transmitted / fileShare.metadata.total_buffer_size * 100), 100) + "%";
     if (fileShare.transmitted === fileShare.metadata.total_buffer_size) {
-      download(new Blob(fileShare.buffer), fileShare.metadata.filename);
+      if (!fileShare.received) {
+        fileShare.received = true;
+        downloadFile(fileShare.buffer, fileShare.metadata.filename);
+      }
       fileShares.pop();
       if (fileShares.length > 0) {
         socket.emit("fs-start", { uid: senderID });
@@ -55,10 +59,11 @@
     }
   });
 
-  socket.on("fs-end", function(){
-    fileShares.pop();
-    if (fileShares.length > 0) {
-      socket.emit("fs-start", { uid: senderID });
-    }
-  });
+  function downloadFile(bufferArray, filename) {
+    const blob = new Blob(bufferArray);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
 })();
