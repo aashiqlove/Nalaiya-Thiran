@@ -1,71 +1,64 @@
 (function(){
-  let receiverID;
+  let senderID;
   const socket = io();
+  let fileShares = [];
 
   function generateID() {
     return `${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}`;
   }
 
-  document.getElementById("sender-start-con-btn").addEventListener("click", function(){
+  document.getElementById("receiver-start-con-btn").addEventListener("click", function(){
+    senderID = document.querySelector("#join-id").value;
+    if (senderID.length === 0) {
+      return;
+    }
     let joinID = generateID();
-
-    document.getElementById("join-id").innerHTML = `<b>Room Id</b><span>${joinID}</span>`;
-    socket.emit("sender-join", {
-      uid: joinID
+    socket.emit("receiver-join", {
+      uid: joinID,
+      sender_uid: senderID
     });
-  });
-
-  socket.on("init", function(uid) {
-    receiverID = uid;
     document.querySelector(".join-screen").classList.remove("active");
     document.querySelector(".fs-screen").classList.add("active");
   });
 
-  document.getElementById("file-input").addEventListener("change", function(e){
-    let files = e.target.files;
-    if(files.length === 0) {
-      return;
-    }
-    for(let i = 0; i < files.length; i++) {
-      const file = files[i];
-      let reader = new FileReader();
-      reader.onload = function(e){
-        let buffer = new Uint8Array(reader.result);
-        let el = document.createElement("div");
-        el.classList.add("item");
-        el.innerHTML = `
-          <div class="progress">0%</div>
-          <div class="filename">${file.name}</div>
-        `;
-        document.querySelector(".files-list").appendChild(el);
-        shareFile({
-          filename: file.name,
-          total_buffer_size: buffer.length,
-          buffer_size: 1024
-        }, buffer, el.querySelector(".progress"), i === files.length - 1); // Signal the last file
-      };
-      reader.readAsArrayBuffer(file);
+  socket.on("fs-meta", function(metadata){
+    const fileShare = {
+      metadata: metadata,
+      transmitted: 0,
+      buffer: []
+    };
+    fileShares.push(fileShare);
+    let el = document.createElement("div");
+    el.classList.add("item");
+    el.innerHTML = `
+      <div class="progress">0%</div>
+      <div class="filename">${metadata.filename}</div>
+    `;
+    document.querySelector(".files-list").appendChild(el);
+    fileShare.progress_node = el.querySelector(".progress");
+    socket.emit("fs-start", { uid: senderID });
+  });
+
+  socket.on("fs-share", function(buffer){
+    const fileShare = fileShares[fileShares.length - 1];
+    fileShare.buffer.push(buffer);
+    fileShare.transmitted += buffer.byteLength;
+    fileShare.progress_node.innerHTML = Math.trunc(fileShare.transmitted / fileShare.metadata.total_buffer_size * 100) + "%";
+    if (fileShare.transmitted === fileShare.metadata.total_buffer_size) {
+      download(new Blob(fileShare.buffer), fileShare.metadata.filename);
+      fileShares.pop();
+      if (fileShares.length > 0) {
+        socket.emit("fs-start", { uid: senderID });
+      }
+    } else {
+      socket.emit("fs-start", { uid: senderID });
     }
   });
 
-  function shareFile(metadata, buffer, progress_node, lastFile) {
-    socket.emit("file-meta", {
-      uid: receiverID,
-      metadata: metadata
-    });
-    socket.on("fs-share", function(){
-      let chunk = buffer.slice(0, metadata.buffer_size);
-      buffer = buffer.slice(metadata.buffer_size, buffer.length);
-      progress_node.innerHTML = Math.trunc((metadata.total_buffer_size - buffer.length) / metadata.total_buffer_size * 100) + "%";
-      if (chunk.length !== 0) {
-        socket.emit("file-raw", {
-          uid: receiverID,
-          buffer: chunk
-        });
-      }
-      if (buffer.length === 0 && lastFile) { // Last file sent
-        socket.emit("fs-end", { uid: receiverID }); // Signal the end of file sharing
-      }
-    });
-  }
+  socket.on("fs-end", function(){
+    fileShares.pop();
+    if (fileShares.length > 0) {
+      socket.emit("fs-start", { uid: senderID });
+    }
+  });
 })();
