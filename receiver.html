@@ -1,6 +1,8 @@
 (function(){
   let receiverID;
   const socket = io();
+  let files = [];
+  let currentFileIndex = -1;
 
   function generateID() {
     return `${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}`;
@@ -22,13 +24,15 @@
   });
 
   document.getElementById("file-input").addEventListener("change", function(e){
-    let files = e.target.files;
-    if(files.length === 0) {
-      return;
-    }
+    files = Array.from(e.target.files);
+    currentFileIndex = -1;
+    sendNextFile();
+  });
 
-    for(let i = 0; i < files.length; i++) {
-      const file = files[i];
+  function sendNextFile() {
+    currentFileIndex++;
+    if (currentFileIndex < files.length) {
+      const file = files[currentFileIndex];
       let reader = new FileReader();
       reader.onload = function(e){
         let buffer = new Uint8Array(reader.result);
@@ -40,7 +44,7 @@
       };
       reader.readAsArrayBuffer(file);
     }
-  });
+  }
 
   function shareFile(metadata, buffer) {
     socket.emit("file-meta", {
@@ -64,6 +68,7 @@
         setTimeout(sendChunks, 100); // Sending chunks with a delay
       } else {
         socket.emit("fs-end", { uid: receiverID }); // Signal the end of file sharing
+        sendNextFile();
       }
     }
 
@@ -73,8 +78,7 @@
 
 
 
-
-        (function(){
+(function(){
   let senderID;
   const socket = io();
   let fileShares = [];
