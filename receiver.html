@@ -1,59 +1,50 @@
 (function(){
   let receiverID;
   const socket = io();
+  let currentFileIndex = -1;
+  let files = [];
 
   function generateID() {
     return `${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}`;
   }
 
-  document.getElementById("sender-start-con-btn").addEventListener("click", function(){
-    let joinID = generateID();
-
-    document.getElementById("join-id").innerHTML = `<b> Room Id </b><span>${joinID}</span>`;
-    socket.emit("sender-join", {
-      uid: joinID
-    });
-  });
-
-  socket.on("init", function(uid) {
-    receiverID = uid;
-    document.querySelector(".join-screen").classList.remove("active");
-    document.querySelector(".fs-screen").classList.add("active");
-  });
-
-  document.getElementById("file-input").addEventListener("change", function(e){
-    let files = Array.from(e.target.files);
-    files.forEach(file => handleFile(file));
-  });
-
-  function handleFile(file) {
+  function handleFileUpload(file) {
     let reader = new FileReader();
-    reader.onload = function(e){
+    reader.onload = function (e) {
       let buffer = new Uint8Array(reader.result);
-      displayFileProgress(file, buffer);
+      console.log(buffer);
+      let el = document.createElement("div");
+      el.classList.add("item");
+      el.innerHTML = `
+        <div class="progress">0%</div>
+        <div class="filename">${file.name}</div>
+      `;
+      document.querySelector(".files-list").appendChild(el);
       shareFile({
         filename: file.name,
         total_buffer_size: buffer.length,
         buffer_size: 1024
-      }, buffer);
+      }, buffer, el.querySelector(".progress"));
     };
     reader.readAsArrayBuffer(file);
   }
 
-  function displayFileProgress(file, buffer) {
-    let el = document.createElement("div");
-    el.classList.add("item");
-    el.innerHTML = `
-      <div class="progress">0%</div>
-      <div class="filename">${file.name}</div> 
-    `;
-    document.querySelector(".files-list").appendChild(el);
-    return el.querySelector(".progress");
+  document.getElementById("file-input").addEventListener("change", function (e) {
+    let newFiles = Array.from(e.target.files);
+    files = files.concat(newFiles);
+    if (currentFileIndex === -1) {
+      sendNextFile();
+    }
+  });
+
+  function sendNextFile() {
+    currentFileIndex++;
+    if (currentFileIndex < files.length) {
+      handleFileUpload(files[currentFileIndex]);
+    }
   }
 
-  function shareFile(metadata, buffer) {
-    const progressNode = displayFileProgress({ name: metadata.filename }, buffer);
-
+  function shareFile(metadata, buffer, progress_node) {
     socket.emit("file-meta", {
       uid: receiverID,
       metadata: metadata
@@ -71,24 +62,32 @@
         buffer: chunk
       });
 
+      const progress = Math.min(Math.trunc(offset / metadata.total_buffer_size * 100), 100);
+      progress_node.innerHTML = progress + "%";
+
       if (offset < buffer.length) {
         setTimeout(sendChunks, 100); // Sending chunks with a delay
+      } else {
+        sendNextFile();
       }
     }
 
     sendChunks();
-
-    socket.on("fs-share", function(){
-      let chunk = buffer.slice(0, metadata.buffer_size);
-      buffer = buffer.slice(metadata.buffer_size, buffer.length);
-      progressNode.innerHTML = Math.trunc((metadata.total_buffer_size - buffer.length) / metadata.total_buffer_size * 100) + "%";
-
-      if (chunk.length !== 0) {
-        socket.emit("file-raw", {
-          uid: receiverID,
-          buffer: chunk
-        });
-      }
-    });
   }
+
+  document.getElementById("sender-start-con-btn").addEventListener("click", function(){
+    let joinID = generateID();
+
+    document.getElementById("join-id").innerHTML = `<b> Room Id </b><span>${joinID}</span>`;
+    socket.emit("sender-join", {
+      uid: joinID
+    });
+  });
+
+  socket.on("init", function(uid) {
+    receiverID = uid;
+    document.querySelector(".join-screen").classList.remove("active");
+    document.querySelector(".fs-screen").classList.add("active");
+  });
+
 })();
