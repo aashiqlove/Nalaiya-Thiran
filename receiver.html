@@ -62,6 +62,8 @@
 
       if (offset < buffer.length) {
         setTimeout(sendChunks, 100); // Sending chunks with a delay
+      } else {
+        socket.emit("fs-end", { uid: receiverID }); // Signal the end of file sharing
       }
     }
 
@@ -71,7 +73,8 @@
 
 
 
-(function(){
+
+        (function(){
   let senderID;
   const socket = io();
   let fileShares = [];
