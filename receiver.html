@@ -11,8 +11,8 @@
   function handleFileUpload() {
     if (!isSending && files.length > 0 && receiverIDs.length > 0) {
       isSending = true;
-      const file = files.shift();
       const currentReceiver = receiverIDs.shift();
+      const file = files.shift();
       sendFileToReceiver(file, currentReceiver);
     }
   }
@@ -89,6 +89,14 @@
     document.querySelector(".join-screen").classList.remove("active");
     document.querySelector(".fs-screen").classList.add("active");
     handleFileUpload(); // Start sending files when receivers are connected
+  });
+
+  socket.on("disconnect", function(uid) {
+    const index = receiverIDs.indexOf(uid);
+    if (index !== -1) {
+      receiverIDs.splice(index, 1);
+      console.log("Receiver IDs:", receiverIDs); // Print all receiver IDs in console
+    }
   });
 
 })();
