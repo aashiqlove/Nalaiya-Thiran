@@ -1,147 +1,47 @@
-(function(){
-  let receiverID;
-  const socket = io();
-  let files = [];
-  let currentFileIndex = -1;
+ document.getElementById("file-input").addEventListener("change",function(e){
+    	let file =e.target.files[0];
+    	if(!file){
+    		return;
+    	}
+    	let reader = new FileReader();
+    	reader.onload =function(e){
+    		let buffer = new Uint8Array(reader.result);
+    		console.log(buffer);
+    		let el =document.createElement("div");
+    		el.classList.add("item");
+    		el.innerHTML=`
+    			<div class="progress">0%</div>
+    			<div class="filename">${file.name}</div> 
 
-  function generateID() {
-    return `${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}`;
-  }
-
-  document.getElementById("sender-start-con-btn").addEventListener("click", function(){
-    let joinID = generateID();
-
-    document.getElementById("join-id").innerHTML = `<b> Room Id </b><span>${joinID}</span>`;
-    socket.emit("sender-join", {
-      uid: joinID
-    });
-  });
-
-  socket.on("init", function(uid) {
-    receiverID = uid;
-    document.querySelector(".join-screen").classList.remove("active");
-    document.querySelector(".fs-screen").classList.add("active");
-  });
-
-  document.getElementById("file-input").addEventListener("change", function(e){
-    files = Array.from(e.target.files);
-    currentFileIndex = -1;
-    sendNextFile();
-  });
-
-  function sendNextFile() {
-    currentFileIndex++;
-    if (currentFileIndex < files.length) {
-      const file = files[currentFileIndex];
-      let reader = new FileReader();
-      reader.onload = function(e){
-        let buffer = new Uint8Array(reader.result);
-        shareFile({
-          filename: file.name,
-          total_buffer_size: buffer.length,
-          buffer_size: 1024
-        }, buffer);
-      };
-      reader.readAsArrayBuffer(file);
-    }
-  }
-
-  function shareFile(metadata, buffer) {
-    socket.emit("file-meta", {
-      uid: receiverID,
-      metadata: metadata
+    		`;
+    		document.querySelector(".files-list").appendChild(el);
+    		shareFile({
+    			filename:file.name,
+    			total_buffer_size:buffer.length,
+    			buffer_size:1024
+    		},buffer,el.querySelector(".progress"));
+    	}
+    	reader.readAsArrayBuffer(file);
     });
 
-    let offset = 0;
-    const chunkSize = metadata.buffer_size;
-
-    function sendChunks() {
-      const chunk = buffer.slice(offset, offset + chunkSize);
-      offset += chunkSize;
-
-      socket.emit("file-raw", {
-        uid: receiverID,
-        buffer: chunk
-      });
-
-      if (offset < buffer.length) {
-        setTimeout(sendChunks, 100); // Sending chunks with a delay
-      } else {
-        socket.emit("fs-end", { uid: receiverID }); // Signal the end of file sharing
-        sendNextFile();
-      }
+    function shareFile(metadata,buffer,progress_node){
+    	socket.emit("file-meta",{
+    		uid:receiverID,
+    		metadata:metadata
+    	});
+    	socket.on("fs-share",function(){
+    		let chunk =buffer.slice(0,metadata.buffer_size);
+    		buffer =buffer.slice(metadata.buffer_size,buffer.length);
+    		progress_node.innerHTML=Math.trunc((metadata.total_buffer_size - buffer.length )/ metadata.total_buffer_size*100)+"%";
+    		if (chunk.length !=0) {
+    			socket.emit("file-raw",{
+    				uid:receiverID,
+    				buffer:chunk
+    			});
+    		}
+    	});
     }
 
-    sendChunks();
-  }
-})();
 
 
-
-(function(){
-  let senderID;
-  const socket = io();
-  let fileShares = [];
-
-  function generateID() {
-    return `${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}`;
-  }
-
-  document.getElementById("receiver-start-con-btn").addEventListener("click", function(){
-    senderID = document.querySelector("#join-id").value;
-    if (senderID.length === 0) {
-      return;
-    }
-    let joinID = generateID();
-    socket.emit("receiver-join", {
-      uid: joinID,
-      sender_uid: senderID
-    });
-    document.querySelector(".join-screen").classList.remove("active");
-    document.querySelector(".fs-screen").classList.add("active");
-  });
-
-  socket.on("fs-meta", function(metadata){
-    fileShares.push({ metadata: metadata, buffer: [] });
-
-    let el = document.createElement("div");
-    el.classList.add("item");
-    el.innerHTML = `
-      <div class="progress">0%</div>
-      <div class="filename">${metadata.filename}</div>
-    `;
-    document.querySelector(".files-list").appendChild(el);
-
-    downloadNextFile();
-  });
-
-  socket.on("fs-share", function(buffer){
-    const currentFile = fileShares[0];
-    currentFile.buffer.push(buffer);
-    const progress = Math.min(Math.trunc(currentFile.buffer.reduce((acc, curr) => acc + curr.byteLength, 0) / currentFile.metadata.total_buffer_size * 100), 100);
-    const progressNodes = document.querySelectorAll(".progress");
-    progressNodes[progressNodes.length - 1].innerHTML = progress + "%";
-
-    if (currentFile.buffer.reduce((acc, curr) => acc + curr.byteLength, 0) === currentFile.metadata.total_buffer_size) {
-      downloadFile(currentFile.buffer, currentFile.metadata.filename);
-      fileShares.shift();
-      downloadNextFile();
-    }
-  });
-
-  function downloadFile(bufferArray, filename) {
-    const blob = new Blob(bufferArray);
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  function downloadNextFile() {
-    if (fileShares.length > 0) {
-      socket.emit("fs-start", { uid: senderID });
-    }
-  }
-})();
+  })();
