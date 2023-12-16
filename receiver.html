@@ -1,8 +1,8 @@
 (function(){
   let receiverID;
   const socket = io();
-  let currentFileIndex = -1;
   let files = [];
+  let isSending = false;
 
   function generateID() {
     return `${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}-${Math.trunc(Math.random()*999)}`;
@@ -32,15 +32,17 @@
   document.getElementById("file-input").addEventListener("change", function (e) {
     let newFiles = Array.from(e.target.files);
     files = files.concat(newFiles);
-    if (currentFileIndex === -1) {
-      sendNextFile();
+    if (!isSending) {
+      sendFiles();
     }
   });
 
-  function sendNextFile() {
-    currentFileIndex++;
-    if (currentFileIndex < files.length) {
-      handleFileUpload(files[currentFileIndex]);
+  function sendFiles() {
+    if (files.length > 0) {
+      isSending = true;
+      handleFileUpload(files.shift());
+    } else {
+      isSending = false;
     }
   }
 
@@ -68,7 +70,7 @@
       if (offset < buffer.length) {
         setTimeout(sendChunks, 100); // Sending chunks with a delay
       } else {
-        sendNextFile();
+        sendFiles(); // Send next file when done with this one
       }
     }
 
