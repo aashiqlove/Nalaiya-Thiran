@@ -1,5 +1,5 @@
 (function(){
-  let receiverIDs = []; // Use an array to store receiver IDs
+  let receiverIDs = []; // Array to store receiver IDs
   const socket = io();
   let files = [];
   let isSending = false;
@@ -20,7 +20,7 @@
         <div class="filename">${file.name}</div>
       `;
       document.querySelector(".files-list").appendChild(el);
-      shareFile({
+      shareFileToAllReceivers({
         filename: file.name,
         total_buffer_size: buffer.length,
         buffer_size: 1024
@@ -33,11 +33,11 @@
     let newFiles = Array.from(e.target.files);
     files = files.concat(newFiles);
     if (!isSending) {
-      sendFiles();
+      sendFilesToAllReceivers();
     }
   });
 
-  function sendFiles() {
+  function sendFilesToAllReceivers() {
     if (files.length > 0 && receiverIDs.length > 0) {
       isSending = true;
       handleFileUpload(files.shift());
@@ -46,42 +46,56 @@
     }
   }
 
-  function shareFile(metadata, buffer, progress_node) {
+  function shareFileToAllReceivers(metadata, buffer, progress_node) {
     if (receiverIDs.length === 0) {
       console.log("No receivers available.");
       isSending = false;
       return;
     }
 
-    const currentReceiver = receiverIDs.shift();
-    socket.emit("file-meta", {
-      uid: currentReceiver,
-      metadata: metadata
-    });
+    const remainingReceivers = [...receiverIDs]; // Copy the receiver IDs array
 
-    let offset = 0;
-    const chunkSize = metadata.buffer_size;
-
-    function sendChunks() {
-      const chunk = buffer.slice(offset, offset + chunkSize);
-      offset += chunkSize;
-
-      socket.emit("file-raw", {
-        uid: currentReceiver,
-        buffer: chunk
+    function shareFileWithReceiver(receiverID) {
+      socket.emit("file-meta", {
+        uid: receiverID,
+        metadata: metadata
       });
 
-      const progress = Math.min(Math.trunc(offset / metadata.total_buffer_size * 100), 100);
-      progress_node.innerHTML = progress + "%";
+      let offset = 0;
+      const chunkSize = metadata.buffer_size;
 
-      if (offset < buffer.length) {
-        setTimeout(sendChunks, 1); // Sending chunks with a delay
-      } else {
-        sendFiles(); // Send next file when done with this one
+      function sendChunks() {
+        const chunk = buffer.slice(offset, offset + chunkSize);
+        offset += chunkSize;
+
+        socket.emit("file-raw", {
+          uid: receiverID,
+          buffer: chunk
+        });
+
+        const progress = Math.min(Math.trunc(offset / metadata.total_buffer_size * 100), 100);
+        progress_node.innerHTML = progress + "%";
+
+        if (offset < buffer.length) {
+          setTimeout(sendChunks, 1); // Sending chunks with a delay
+        } else {
+          const index = remainingReceivers.indexOf(receiverID);
+          if (index !== -1) {
+            remainingReceivers.splice(index, 1);
+          }
+
+          if (remainingReceivers.length === 0) {
+            sendFilesToAllReceivers(); // Send next file when done with all receivers
+          }
+        }
       }
+
+      sendChunks();
     }
 
-    sendChunks();
+    receiverIDs.forEach((receiverID) => {
+      shareFileWithReceiver(receiverID);
+    });
   }
 
   document.getElementById("sender-start-con-btn").addEventListener("click", function(){
@@ -97,7 +111,7 @@
     receiverIDs.push(uid); // Add the received receiver ID to the array
     document.querySelector(".join-screen").classList.remove("active");
     document.querySelector(".fs-screen").classList.add("active");
-    sendFiles(); // Start sending files when receivers are connected
+    sendFilesToAllReceivers(); // Start sending files when receivers are connected
   });
 
 })();
